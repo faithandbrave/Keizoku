@@ -23,65 +23,65 @@ class amber {
     boost::contexts::context ctx_;
     boost::function<void(amber&)> fn_;
     boost::initialized<bool> started_;
-	boost::initialized<bool> is_break_;
-	boost::initialized<int> now_value_;
+    boost::initialized<bool> is_break_;
+    boost::initialized<int> now_value_;
 
     void trampoline_()
     { fn_(*this); }
 
 public:
-	amber(boost::function<void(amber&)> const& fn)
-	{
-		ctx_.swap(boost::contexts::context(
-					&amber::trampoline_,
-					this,
-					boost::contexts::default_stacksize(),
-					boost::contexts::stack_unwind,
-					boost::contexts::return_to_caller));
+    amber(boost::function<void(amber&)> const& fn)
+    {
+        ctx_ = boost::contexts::context(
+                    &amber::trampoline_,
+                    this,
+                    boost::contexts::default_stacksize(),
+                    boost::contexts::stack_unwind,
+                    boost::contexts::return_to_caller);
 
-		fn_ = fn;
-	}
+        fn_ = fn;
+    }
 
-	void resume()
+    void resume()
     {
         if (!started_.data()) {
             started_.data() = true;
-			is_break_.data() = false;
-			now_value_.data() = ctx_.start();
+            is_break_.data() = false;
+            now_value_.data() = ctx_.start();
         }
         else {
             now_value_.data() = ctx_.resume();
         }
     }
 
-	void restart()
-	{
-		started_.data() = false;
-		is_break_.data() = false;
-		ctx_.swap(boost::contexts::context(
-					&amber::trampoline_,
-					this,
-					boost::contexts::default_stacksize(),
-					boost::contexts::stack_unwind,
-					boost::contexts::return_to_caller));
-		resume();
-	}
+    void restart()
+    {
+        started_.data() = false;
+        is_break_.data() = false;
+        ctx_ = boost::contexts::context(
+                    &amber::trampoline_,
+                    this,
+                    boost::contexts::default_stacksize(),
+                    boost::contexts::stack_unwind,
+                    boost::contexts::return_to_caller);
+        resume();
+    }
 
-	int suspend(int vp = 0)
+    int suspend(int vp = 0)
     { return ctx_.suspend(vp); }
 
-	int suspend_break(int vp = 0)
-	{
-		is_break_.data() = true;
-		return ctx_.suspend(vp);
-	}
+    int suspend_break(int vp = 0)
+    {
+        is_break_.data() = true;
+        return ctx_.suspend(vp);
+    }
 
     bool is_complete() const
     { return is_break_.data() || ctx_.is_complete(); }
 
-	void unwind_stack() { ctx_.unwind_stack(); }
+    void unwind_stack() { ctx_.unwind_stack(); }
 
-	int get() const { return now_value_.data(); }
+    int get() const { return now_value_.data(); }
 };
 
 class amb_block_t {
@@ -89,16 +89,16 @@ class amb_block_t {
     boost::initialized<bool> initialized_;
     boost::function<void(amb_block_t&)> fn_;
 public:
-	amb_block_t& operator=(boost::function<void(amb_block_t&)> fn)
-	{
-		fn_ = fn;
-		return *this;
-	}
+    amb_block_t& operator=(boost::function<void(amb_block_t&)> fn)
+    {
+        fn_ = fn;
+        return *this;
+    }
 
-	~amb_block_t()
-	{
-		execute();
-	}
+    ~amb_block_t()
+    {
+        execute();
+    }
 
     void add(std::unique_ptr<amber> x)
     {
@@ -114,14 +114,14 @@ public:
 
     void execute()
     {
-		using namespace boost::adaptors;
+        using namespace boost::adaptors;
 
         while (true) {
             fn_(*this);
 
-			if (!initialized_.data()) {
-				initialized_.data() = true;
-			}
+            if (!initialized_.data()) {
+                initialized_.data() = true;
+            }
 
             if (is_all_complete()) {
                 break;
@@ -132,15 +132,15 @@ public:
                 amber& x = *boost::get<0>(adj);
                 amber& y = *boost::get<1>(adj);
 
-				if (x.is_complete()) {
-					x.restart();
-					if (y.is_complete())
-						continue;
-					y.resume();
-					break;
+                if (x.is_complete()) {
+                    x.restart();
+                    if (y.is_complete())
+                        continue;
+                    y.resume();
+                    break;
                 } else {
                     x.resume();
-					break;
+                    break;
                 }
             }
         }
@@ -150,11 +150,11 @@ public:
     { return initialized_.data(); }
 
 private:
-	bool is_all_complete() const
-	{
-		using namespace boost::adaptors;
-		return boost::all_of(ambers_ | indirected, [](amber& x) { return x.is_complete(); });
-	}
+    bool is_all_complete() const
+    {
+        using namespace boost::adaptors;
+        return boost::all_of(ambers_ | indirected, [](amber& x) { return x.is_complete(); });
+    }
 };
 
 inline amber& amb(amb_block_t& ctx, std::size_t i, boost::function<void(amber&)> f)
@@ -163,7 +163,7 @@ inline amber& amb(amb_block_t& ctx, std::size_t i, boost::function<void(amber&)>
         return ctx.at(i);
 
     std::unique_ptr<amber> p(new amber(f));
-	p->resume();
+    p->resume();
     ctx.add(boost::move(p));
     return ctx.at(i);
 }
